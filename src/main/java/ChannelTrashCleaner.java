@@ -33,7 +33,6 @@ import java.lang.StringBuilder;
  */
 public class ChannelTrashCleaner implements MessageCreateListener
 {
-	private ArrayList<String> fellowBots = null;
 	private Map<String,String> botExceptions = null;
 	private final String botChan = "bot-commands";
 
@@ -41,6 +40,11 @@ public class ChannelTrashCleaner implements MessageCreateListener
 	{
 		botExceptions = new HashMap<String,String>();
 
+	/*
+	 * XXX
+	 *	Put exceptions in a JSON file and
+	 *	parse it here instead of hardcoding.
+	 */
 		botExceptions.put("MEE6", "beauty-area");
 	}
 
@@ -98,6 +102,16 @@ public class ChannelTrashCleaner implements MessageCreateListener
 			Object[] chans;
 			StringBuilder sBuilder = new StringBuilder();
 
+		/*
+		 *	EmbedBuilder eBuilder = new EmbedBuilder();
+		 *	ebuilder
+		 *		.setTitle("⛔ Deleted message ⛔")
+		 		.setDescription("Bot posted in non-bot channel")
+				.addField("Botname", userName)
+				.addInlineField("Message ID", "" + mId)
+				.setFooter("✅ Please interact with bots in " + botChan)
+				.setColor(Color.RED);
+		 */
 			sBuilder
 				.append(
 					"⛔ Deleted message by " + userName + " ⛔\n\n" +
