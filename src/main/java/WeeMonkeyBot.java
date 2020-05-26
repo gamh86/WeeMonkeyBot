@@ -91,6 +91,7 @@ public class WeeMonkeyBot
 		api.addMessageCreateListener(new FeedCommand());
 		api.addMessageCreateListener(new ClearChannelCommand());
 		api.addMessageCreateListener(new ChannelTrashCleaner(api));
+		api.addMessageCreateListener(new WeatherCommand());
 	}
 
 	private void OUT(String msg)
