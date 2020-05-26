@@ -1,0 +1,17 @@
+{
+	"botname": "Wee Monkey",
+	"responses": {
+		"1": {
+			"message": "found some crumbs for you! Enjoy!",
+			"url": "https://cdn.discordapp.com/attachments/714242110525669516/714597298935562350/crumbs.jpg"
+		},
+		"2": {
+			"message": "treated you to some fine sushi!",
+			"url": "https://cdn.discordapp.com/attachments/714242110525669516/714598939176861767/sushi.jpg"
+		},
+		"3": {
+			"message": "said Nnnnnno!!!!",
+			"url": "https://cdn.discordapp.com/attachments/714242110525669516/714598920520728616/nothing.jpg"
+		}
+	}
+}
