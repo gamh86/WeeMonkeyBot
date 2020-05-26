@@ -22,6 +22,8 @@ import java.util.Set;
 
 import java.lang.StringBuilder;
 
+import java.awt.Color;
+
 /**
  * Listen for bot messages posted in channels other
  * than the one dedicated for interaction with bots.
@@ -102,16 +104,17 @@ public class ChannelTrashCleaner implements MessageCreateListener
 			Object[] chans;
 			StringBuilder sBuilder = new StringBuilder();
 
-		/*
-		 *	EmbedBuilder eBuilder = new EmbedBuilder();
-		 *	ebuilder
-		 *		.setTitle("⛔ Deleted message ⛔")
+
+			EmbedBuilder eBuilder = new EmbedBuilder();
+			eBuilder
+				.setTitle("⛔ Deleted message ⛔")
 		 		.setDescription("Bot posted in non-bot channel")
 				.addField("Botname", userName)
 				.addInlineField("Message ID", "" + mId)
 				.setFooter("✅ Please interact with bots in " + botChan)
 				.setColor(Color.RED);
-		 */
+
+		/*
 			sBuilder
 				.append(
 					"⛔ Deleted message by " + userName + " ⛔\n\n" +
@@ -131,6 +134,7 @@ public class ChannelTrashCleaner implements MessageCreateListener
 
 			if (!eSet.isEmpty())
 				sBuilder.append("```");
+		 */
 
 			if (!colChans.isEmpty())
 			{
@@ -139,7 +143,7 @@ public class ChannelTrashCleaner implements MessageCreateListener
 				Optional<TextChannel> oBotChannel = chan.asTextChannel();
 
 				if (oBotChannel.isPresent())
-					oBotChannel.get().sendMessage(sBuilder.toString()).join();
+					oBotChannel.get().sendMessage(eBuilder).join();
 			}
 
 			txtChan.deleteMessages(event.getMessage());
