@@ -19,6 +19,7 @@ import org.javacord.api.entity.message.embed.*;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.io.File;
@@ -68,6 +69,9 @@ public class WeeMonkeyBot
 
 	public WeeMonkeyBot()
 	{
+		Locale locale = new Locale("UK");
+		Locale.setDefault(locale);
+
 		accessToken = getAccessToken();
 		assert(null != accessToken);
 
@@ -92,6 +96,7 @@ public class WeeMonkeyBot
 		api.addMessageCreateListener(new ClearChannelCommand());
 		api.addMessageCreateListener(new ChannelTrashCleaner(api));
 		api.addMessageCreateListener(new WeatherCommand());
+		api.addMessageCreateListener(new MarsCommand());
 	}
 
 	private void OUT(String msg)
