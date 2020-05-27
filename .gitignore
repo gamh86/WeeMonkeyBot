@@ -1,1 +1,4 @@
 *.class
+*.json
+*.lock
+*.bin
