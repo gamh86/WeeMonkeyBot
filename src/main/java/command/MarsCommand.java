@@ -18,6 +18,8 @@ import org.javacord.api.entity.server.*;
 import org.javacord.api.entity.user.*;
 import org.javacord.api.entity.message.embed.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Date;
 import java.util.Map;
 import java.util.HashMap;
@@ -56,11 +58,21 @@ class InsightMetadata
 public class MarsCommand implements MessageCreateListener
 {
 	private ApiToken apiToken = null;
-	private static final String CMD = "!wm.mars";
+	private static final String CMD = "o?mars";
 
+/*
+ * The data is given from a range of sols, say 527 - 534
+ * which is 6ish days of Earth data. Nothing new will
+ * happen for around a day. So set the cache lifetime
+ * at 24 hours to avoid needless API requests to NASA.
+ * This way, we can use other of their APIs without
+ * using up too quickly our allocate 1000 requests per
+ * hour.
+ */
+	private final int CACHE_LIFETIME = 24; // hours
 	private static long timeLastRequest = 0;
 	private long minDelay = 4000; // milliseconds
-	private long cacheRefreshInterval = (6 * 3600000); // 6 hours in milliseconds
+	private long cacheRefreshInterval = (CACHE_LIFETIME * 3600000); // 6 hours in milliseconds
 
 	private static final String nasaAccessFileName = "src/main/resources/nasa_access.json";
 	private static final String insightMetadataFileName = "src/main/resources/insight_metadata.json";
@@ -209,11 +221,6 @@ public class MarsCommand implements MessageCreateListener
 						apiToken.getToken() +
 						"&feedtype=json&ver=1.0");
 
-					System.out.println(
-						"Sending GET request for:\n" +
-						"https://api.nasa.gov/insight_weather/?api_key=" + apiToken.getToken() +
-						"&feedtype=json&ver=1.0");
-
 					HttpURLConnection conn = (HttpURLConnection)url.openConnection();
 					conn.setRequestMethod("GET");
 					conn.setRequestProperty("Accept", "application/json");
@@ -246,10 +253,27 @@ public class MarsCommand implements MessageCreateListener
 				ObjectMapper mapper = new ObjectMapper();
 				JsonNode root = mapper.readTree(jsonData);
 
-				System.out.println("Total JSON data: " + jsonData.length + " bytes");
+				//System.out.println("Total JSON data: " + jsonData.length + " bytes");
 
 				JsonNode sols = root.at("/validity_checks/sols_checked");
 				Iterator<JsonNode> iter = sols.iterator();
+				List<String> listSols = new ArrayList<String>();
+
+				while (iter.hasNext())
+					listSols.add(iter.next().asText());
+
+				int nrSols = listSols.size();
+
+				String first = listSols.get(0);
+				String last = listSols.get(nrSols-1);
+
+				String dataBeginAt = root.at("/" + first + "/First_UTC").asText();
+				String dataEndAt = null;
+
+				while ((null == dataEndAt || "" == dataEndAt) && nrSols > 1)
+					dataEndAt = root.at("/" + listSols.get(--nrSols) + "/Last_UTC").asText();
+
+				iter = sols.iterator();
 
 				String sol = null;
 				String season = null;
@@ -282,14 +306,11 @@ public class MarsCommand implements MessageCreateListener
 				String minPre = root.at("/" + sol + "/PRE/mn").asText();
 				String maxPre = root.at("/" + sol + "/PRE/mx").asText();
 
-				String fromTime = root.at("/" + sol + "/First_UTC").asText();
-				String toTime = root.at("/" + sol + "/Last_UTC").asText();
-
 				EmbedBuilder eBuilder = new EmbedBuilder();
 
 				event.getChannel().sendMessage(new EmbedBuilder()
-					.setTitle("Insight Weather for Mars (Sol " + sol + ")")
-					.setDescription("**" + fromTime + "** to **" + toTime + "** (UTC)")
+					.setTitle("Insight Weather for Mars (Sols " + first + " to " + last + ")")
+					.setDescription("**" + dataBeginAt + "** to **" + dataEndAt + "** (UTC)")
 					.addInlineField("Season", season)
 					.addInlineField("Av. Temp", avTemp + "C")
 					.addInlineField("Min/Max", minTemp + "C/" + maxTemp + "C")
