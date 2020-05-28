@@ -72,7 +72,7 @@ public class MarsCommand implements MessageCreateListener
 	private final int CACHE_LIFETIME = 24; // hours
 	private static long timeLastRequest = 0;
 	private long minDelay = 4000; // milliseconds
-	private long cacheRefreshInterval = (CACHE_LIFETIME * 3600000); // 6 hours in milliseconds
+	private long cacheRefreshInterval = (CACHE_LIFETIME * 3600000); // CACHE_LIFETIME hours in milliseconds
 
 	private static final String nasaAccessFileName = "src/main/resources/nasa_access.json";
 	private static final String insightMetadataFileName = "src/main/resources/insight_metadata.json";
