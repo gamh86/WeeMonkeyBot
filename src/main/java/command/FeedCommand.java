@@ -38,8 +38,8 @@ class Response
 
 public class FeedCommand implements MessageCreateListener
 {
-	private static final String CMD = "!wm.feed";
-	private static final String BOTNAME = "Wee Monkey";
+	private static final String CMD = "o?feed";
+	private static final String BOTNAME = "Orion";
 
 	private Random rand = null;
 	private ArrayList<Response> CMD_responses = null;
