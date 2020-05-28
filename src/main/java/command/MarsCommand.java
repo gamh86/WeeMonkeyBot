@@ -306,8 +306,6 @@ public class MarsCommand implements MessageCreateListener
 				String minPre = root.at("/" + sol + "/PRE/mn").asText();
 				String maxPre = root.at("/" + sol + "/PRE/mx").asText();
 
-				EmbedBuilder eBuilder = new EmbedBuilder();
-
 				event.getChannel().sendMessage(new EmbedBuilder()
 					.setTitle("Insight Weather for Mars (Sols " + first + " to " + last + ")")
 					.setDescription("**" + dataBeginAt + "** to **" + dataEndAt + "** (UTC)")
