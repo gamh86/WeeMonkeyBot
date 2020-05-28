@@ -6,6 +6,7 @@ import org.apache.logging.log4j.Logger;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import org.javacord.api.*;
 import org.javacord.api.entity.*;
@@ -22,6 +23,7 @@ import org.javacord.api.entity.message.embed.*;
 import java.util.Date;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.TimeZone;
 
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -49,6 +51,7 @@ class ApiToken
 	public String getToken() { return this.token; }
 }
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class Coordinates
 {
 	@JsonProperty
@@ -60,6 +63,7 @@ class Coordinates
 	public double getLatitude() { return this.lat; }
 }
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class Weather
 {
 	@JsonProperty
@@ -77,6 +81,7 @@ class Weather
 	public String getIcon() { return this.icon; }
 }
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class wMain
 {
 	@JsonProperty
@@ -100,6 +105,7 @@ class wMain
 	public int getHumidity() { return this.humidity; }
 }
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class Wind
 {	@JsonProperty
 	double speed;
@@ -110,6 +116,7 @@ class Wind
 	public int getDeg() { return this.deg; }
 }
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class Clouds
 {
 	@JsonProperty
@@ -118,6 +125,7 @@ class Clouds
 	public int getAll() { return this.all; }
 }
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class Sys
 {
 	@JsonProperty
@@ -138,6 +146,7 @@ class Sys
 	public long getSunset() { return this.sunset; }
 }
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class WeatherData
 {
 	@JsonProperty
@@ -315,6 +324,9 @@ public class WeatherCommand implements MessageCreateListener
 					SimpleDateFormat dateSunrise = new SimpleDateFormat();
 					SimpleDateFormat dateSunset = new SimpleDateFormat();
 
+					dateSunrise.setTimeZone(TimeZone.getTimeZone("UTC"));
+					dateSunset.setTimeZone(TimeZone.getTimeZone("UTC"));
+
 					double temp = wmain.getTemp() - KELVIN_CELSIUS;
 					double feelsLike = wmain.getFeelsLike() - KELVIN_CELSIUS;
 					double minTemp = wmain.getMinTemp() - KELVIN_CELSIUS;
@@ -323,6 +335,11 @@ public class WeatherCommand implements MessageCreateListener
 					long timeSunrise = sys.getSunrise() * 1000;
 					long timeSunset = sys.getSunset() * 1000;
 
+					JsonNode root = mapper.readTree(jsonData);
+
+					long timezoneOffsetMillis = root.at("/timezone").asLong() * 1000;
+					timeSunrise += timezoneOffsetMillis;
+					timeSunset += timezoneOffsetMillis;
 /*
 					JsonNode root = mapper.readTree(jsonData);
 
@@ -350,7 +367,7 @@ public class WeatherCommand implements MessageCreateListener
 
 					DecimalFormat dFmt = new DecimalFormat("#.00");
 
-					System.out.println("http://openweathermap.org/img/wn/" + weather[0].getIcon() + "@2x.png");
+					//System.out.println("http://openweathermap.org/img/wn/" + weather[0].getIcon() + "@2x.png");
 
 					event.getChannel().sendMessage(new EmbedBuilder()
 						.setTitle(
