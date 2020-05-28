@@ -19,7 +19,7 @@ import java.awt.Color;
 
 public class ClearChannelCommand implements MessageCreateListener
 {
-	private static final String CMD = "!wm.clear";
+	private static final String CMD = "o?clear";
 
 	@Override
 	public void onMessageCreate(MessageCreateEvent event)
@@ -88,9 +88,11 @@ public class ClearChannelCommand implements MessageCreateListener
 					EmbedBuilder eBuilder = new EmbedBuilder();
 
 					eBuilder
-						.setTitle("🗑 Deleted Messages 🗑")
-						.addField("Number", "" + nrDeleted)
-						.addInlineField("Channel", String.format("<%s:%s>", chanName, txtChannel.getId()))
+						.setTitle("Cleared Messages")
+						.addInlineField("Messages", "" + nrDeleted)
+						.addInlineField("Channel", chanName)
+						.addInlineField("ChannelID", String.format("0x%x", txtChannel.getId()))
+						.setThumbnail("https://i0.wp.com/cdnimg.webstaurantstore.com/images/products/extra_large/72222/871507.jpg")
 						.setColor(Color.ORANGE);
 
 					oUser.get().sendMessage(eBuilder).join();
