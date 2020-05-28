@@ -191,13 +191,34 @@ class WeatherData
 	public int getCode() { return this.cod; }
 }
 
+class CachedWeatherData
+{
+	private WeatherData data;
+	private long timeCached;
+
+	public WeatherData getWeatherData() { return this.data; }
+	public long getTimeCached() { return this.timeCached; }
+
+	public void setWeatherData(WeatherData d) { this.data = d; }
+	public void setTimeCached(long t) { this.timeCached = t; }
+}
+
+/**
+ * Cache weather entries for 30 minutes. Any requests
+ * for said data will be fulfilled. Any other queries
+ * are subject to 1 request per minute (as per
+ * openweathermap API rules).
+ */
 public class WeatherCommand implements MessageCreateListener
 {
 	private ApiToken openWeatherApiToken = null;
-	private static final String CMD = "!wm.weather";
+	private static final String CMD = "o?weather";
 	private static final double KELVIN_CELSIUS = 273.15;
 	private static long timeLastRequest = 0;
 	private long minDelay = 60000; // milliseconds
+	private final int CACHE_LIFETIME = (60000 * 30); // thirty minutes
+	private Map<String,CachedWeatherData> cache;
+	Logger log = LogManager.getLogger(WeatherCommand.class.getName());
 
 	public WeatherCommand()
 	{
@@ -213,6 +234,8 @@ public class WeatherCommand implements MessageCreateListener
 			e.printStackTrace();
 			System.exit(1);
 		}
+
+		cache = new HashMap<String,CachedWeatherData>();
 	}
 
 	private boolean canSendRequest()
@@ -227,6 +250,7 @@ public class WeatherCommand implements MessageCreateListener
 	{
 		EmbedBuilder eBuilder = new EmbedBuilder();
 
+		log.trace("No weather data for \"" + log + "\"");
 		eBuilder
 			.setTitle("⚠ An Error Occurred ⚠")
 			.setDescription("No weather information for \"" + loc + "\" (" + code + ")")
@@ -263,6 +287,55 @@ public class WeatherCommand implements MessageCreateListener
 		event.getChannel().sendMessage(sBuilder.toString());
 	}
 
+	private boolean dataOK(CachedWeatherData cached)
+	{
+		return null != cached && (System.currentTimeMillis() - cached.getTimeCached()) < CACHE_LIFETIME;
+	}
+
+	private void sendData(MessageCreateEvent event, String location, WeatherData data)
+	{
+		Coordinates coords = data.getCoordinates();
+		Weather[] weather = data.getWeather();
+		wMain wmain = data.getMain();
+		Sys sys = data.getSys();
+		long timezoneOffsetMillis = data.getTimezone() * 1000;
+
+		SimpleDateFormat dateSunrise = new SimpleDateFormat();
+		SimpleDateFormat dateSunset = new SimpleDateFormat();
+
+		dateSunrise.setTimeZone(TimeZone.getTimeZone("UTC"));
+		dateSunset.setTimeZone(TimeZone.getTimeZone("UTC"));
+
+		double temp = wmain.getTemp() - KELVIN_CELSIUS;
+		double feelsLike = wmain.getFeelsLike() - KELVIN_CELSIUS;
+		double minTemp = wmain.getMinTemp() - KELVIN_CELSIUS;
+		double maxTemp = wmain.getMaxTemp() - KELVIN_CELSIUS;
+
+		long timeSunrise = sys.getSunrise() * 1000;
+		long timeSunset = sys.getSunset() * 1000;
+
+		timeSunrise += timezoneOffsetMillis;
+		timeSunset += timezoneOffsetMillis;
+
+		DecimalFormat dFmt = new DecimalFormat("#.00");
+
+		event.getChannel().sendMessage(new EmbedBuilder()
+			.setTitle(
+				"Weather for " + location +
+				" [" + coords.getLatitude() + " : " + coords.getLongitude() + "]")
+			.setDescription(weather[0].getDescription())
+			.addInlineField("Current", dFmt.format(temp) + "C")
+			.addInlineField("Feels Like", dFmt.format(feelsLike) + "C")
+			.addInlineField("Min/Max", dFmt.format(minTemp) + "C/" + dFmt.format(maxTemp) + "C")
+			.addInlineField("Humidity", "" + wmain.getHumidity() + "%")
+			.addInlineField("Sunrise at", dateSunrise.format(new Date(timeSunrise)).substring(10))
+			.addInlineField("Sunset at", dateSunset.format(new Date(timeSunset)).substring(10))
+			.setColor(Color.ORANGE)
+			.setThumbnail("http://openweathermap.org/img/wn/" + weather[0].getIcon() + "@2x.png"));
+
+		return;
+	}
+
 	@Override
 	public void onMessageCreate(MessageCreateEvent event)
 	{
@@ -274,6 +347,16 @@ public class WeatherCommand implements MessageCreateListener
 
 			if (sub.equals(CMD))
 			{
+				String location = messageContent.substring(CMD.length()+1);
+				CachedWeatherData cData = cache.get(location);
+
+				if (dataOK(cData))
+				{
+					log.trace("Fulfilling request with data from cache");
+					sendData(event, location, cData.getWeatherData());
+					return;
+				}
+
 				if (!canSendRequest())
 				{
 					event.getChannel().sendMessage("Only one weather request per minute is currently permitted!");
@@ -282,7 +365,7 @@ public class WeatherCommand implements MessageCreateListener
 
 				try
 				{
-					String location = messageContent.substring(CMD.length()+1);
+					log.trace("Querying weather for \"" + location + "\"");
 
 					URL url = new URL(
 						"https://api.openweathermap.org/data/2.5/weather?q=" +
@@ -316,72 +399,14 @@ public class WeatherCommand implements MessageCreateListener
 					byte[] jsonData = sBuilder.substring(0).getBytes("UTF-8");
 					WeatherData weatherData = mapper.readValue(jsonData, WeatherData.class);
 
-					Coordinates coords = weatherData.getCoordinates();
-					Weather[] weather = weatherData.getWeather();
-					wMain wmain = weatherData.getMain();
-					Sys sys = weatherData.getSys();
+					CachedWeatherData cached = new CachedWeatherData();
+					cached.setWeatherData(weatherData);
+					cached.setTimeCached(System.currentTimeMillis());
 
-					SimpleDateFormat dateSunrise = new SimpleDateFormat();
-					SimpleDateFormat dateSunset = new SimpleDateFormat();
+					log.trace("Caching weather data for \"" + location + "\"");
+					cache.put(location, cached);
 
-					dateSunrise.setTimeZone(TimeZone.getTimeZone("UTC"));
-					dateSunset.setTimeZone(TimeZone.getTimeZone("UTC"));
-
-					double temp = wmain.getTemp() - KELVIN_CELSIUS;
-					double feelsLike = wmain.getFeelsLike() - KELVIN_CELSIUS;
-					double minTemp = wmain.getMinTemp() - KELVIN_CELSIUS;
-					double maxTemp = wmain.getMaxTemp() - KELVIN_CELSIUS;
-
-					long timeSunrise = sys.getSunrise() * 1000;
-					long timeSunset = sys.getSunset() * 1000;
-
-					JsonNode root = mapper.readTree(jsonData);
-
-					long timezoneOffsetMillis = root.at("/timezone").asLong() * 1000;
-					timeSunrise += timezoneOffsetMillis;
-					timeSunset += timezoneOffsetMillis;
-/*
-					JsonNode root = mapper.readTree(jsonData);
-
-					JsonNode wNode = root.path("weather");
-					Weather[] weathers = mapper.readValue(wNode, Weather[].class);
-
-					double longitude = root.at("/coord/lon").asDouble();
-					double latitude = root.at("/coord/lat").asDouble();
-
-					String desc = root.path("description").asText();
-					String iconId = root.path("icon").asText();
-
-					double temp = root.at("/main/temp").asDouble() - KELVIN_CELSIUS;
-					double feelsLike = root.at("/main/feels_like").asDouble() - KELVIN_CELSIUS;
-					double minTemp = root.at("/main/temp_min").asDouble() - KELVIN_CELSIUS;
-					double maxTemp = root.at("/main/temp_max").asDouble() - KELVIN_CELSIUS;
-					int humidity = root.at("/main/humidity").asInt();
-
-					long timeSunrise = root.at("/sys/sunrise").asLong() * 1000;
-					long timeSunset = root.at("/sys/sunset").asLong() * 1000;
-
-					SimpleDateFormat dateSunrise = new SimpleDateFormat();
-					SimpleDateFormat dateSunset = new SimpleDateFormat();
-*/
-
-					DecimalFormat dFmt = new DecimalFormat("#.00");
-
-					//System.out.println("http://openweathermap.org/img/wn/" + weather[0].getIcon() + "@2x.png");
-
-					event.getChannel().sendMessage(new EmbedBuilder()
-						.setTitle(
-							"Weather for " + location +
-							" [" + coords.getLatitude() + " : " + coords.getLongitude() + "]")
-						.setDescription(weather[0].getDescription())
-						.addInlineField("Current", dFmt.format(temp) + "C")
-						.addInlineField("Feels Like", dFmt.format(feelsLike) + "C")
-						.addInlineField("Min/Max", dFmt.format(minTemp) + "C/" + dFmt.format(maxTemp) + "C")
-						.addInlineField("Humidity", "" + wmain.getHumidity() + "%")
-						.addInlineField("Sunrise at", dateSunrise.format(new Date(timeSunrise)).substring(10))
-						.addInlineField("Sunset at", dateSunset.format(new Date(timeSunset)).substring(10))
-						.setColor(Color.ORANGE)
-						.setThumbnail("http://openweathermap.org/img/wn/" + weather[0].getIcon() + "@2x.png"));
+					sendData(event, location, weatherData);
 				}
 				catch (Exception e)
 				{
